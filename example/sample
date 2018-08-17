@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+if [[ -z "${1-}" ]]; then
+    echo "Please use one of the following ways to run the profiler."
+    echo ""
+    echo "  ./sample command"
+    echo "      Runs the sample and uses commands to initiate the profiling."
+    echo ""
+    echo "  ./sample library"
+    echo "      Runs the sample and uses the Bash library to start profiling."
+    echo ""
+    echo "You may also pass a third parameter in order to specify the output file"
+    echo "for the profile."
+else
+    if [[ "$1" == "command" ]]; then
+        echo "Profiling with a command"
+
+        # Note: you MUST source this file. Typically it will be in your
+        # $PATH, so you would instead use this:
+        #     . bash-profile-start
+        . ../bash-profile-start "${2-}"
+    else
+        echo "Profiling with the library"
+
+        # This can be loaded with BPM or just sourced directly into your shell
+        # scripts. It has no dependencies.
+        #
+        # When using BPM, you would include the library like this instead of
+        # sourcing the library directly.
+        #     . bpm
+        #     bpm::include profile
+        . ../libprofile
+        profile::start "${2-}"
+    fi
+
+    echo "This line is being profiled."
+    echo "These echo statements should take almost no time."
+    echo "Defining a function"
+
+    function ackermann() {
+        local a
+
+        if [[ "$1" -eq 0 ]]; then
+            ackermann_result=$(($2 + 1))
+        elif [[ "$2" -eq 0 ]]; then
+            ackermann "$(($1 - 1))" 1
+        else
+            ackermann "$1" "$(($2 - 1))"
+            ackermann "$(($1 - 1))" "$ackermann_result"
+        fi
+    }
+
+    echo "Sleeping 1 second"
+    sleep 1
+
+    echo "Testing Ackermann 3 3"
+    ackermann 3 3
+
+    echo "Running curl of google.com"
+    curl google.com &> /dev/null
+
+    echo "Done with examples"
+fi

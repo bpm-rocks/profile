@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+# Start profiling.
+#
+# $1 - Profile filename to use. Optional. If not specified, generates a random
+#      filename.
+#
+# Returns 0 (true) on success, 1 if it could not generate a random file.
+profile::start() {
+    local nl profileFile script
+
+    profileFile=${1-}
+
+    if [[ -z "$profileFile" ]]; then
+        profileFile=$(mktemp --tmpdir bash-profile.XXXXXXXXXX || :)
+    fi
+
+    if [[ -z "$profileFile" && -d "$TMPDIR" ]]; then
+        profileFile="$TMPDIR/bash-profile-$$"
+    fi
+
+    if [[ -z "$profileFile" ]]; then
+        echo "Unable to make temporary file." >&2
+        return 1
+    fi
+
+    echo "Starting profile: $profileFile" >&2
+
+    nl=$'\n'
+    script="$(cat <<EOF
+from time import time
+import sys
+startTime = time()
+lastTime = time()
+lastLine = "Initialization and waiting for first command\n"
+while True:
+    nextLine = sys.stdin.readline()
+    nextTime = time()
+    sys.stdout.write("%.9f %.9f %s" % (lastTime - startTime, nextTime - lastTime, lastLine))
+    if not len(nextLine):
+        break
+    lastTime = nextTime
+    lastLine = nextLine
+EOF
+    )"
+
+    # Turn off any colors that the user set up
+    export PS4="+ "
+
+    exec 3>&2 2> >(
+        python -c "$script" > "$profileFile"
+    )
+    set -x
+}
+
+
+# Turn off profiling.
+#
+# Returns nothing.
+profile::stop() {
+    set +x
+    exec 2>&3 3>&-
+}
